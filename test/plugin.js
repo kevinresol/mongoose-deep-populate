@@ -12,6 +12,57 @@ describe('mongoose-deep-populate', function () {
    * Bugs
    *==============================================*/
   describe('Bugs', function () {
+    describe('Bug #47', function () {
+      it('fixes bug #47', function (cb) {
+        var dbUrl = process.env.TEST_DB
+          , connection = mongoose.createConnection(dbUrl)
+
+        var UserSchema = new Schema({
+          name:String
+        })
+        UserSchema.plugin(deepPopulate)
+        var User = connection.model('User.bug47', UserSchema)
+
+        var ItemSchema = new Schema({
+          waitingList: {
+            type: {
+              current: {
+                type: [{
+                  date: {type: Date},
+                  user: {type: Number, ref: "User.bug47"},
+                }]
+              }
+            }
+          }, 
+        })
+        ItemSchema.plugin(deepPopulate)
+        var Item = connection.model('Item.bug47', ItemSchema)
+
+        var user = new User()
+        var item = new Item({
+          waitingList: {
+            current: [{
+              date: new Date(),
+              user: user,
+            }]
+          }
+        });
+
+        user.save(function (err) {
+          if (err) return cb(err)
+          item.save(function (err) {
+            if (err) return cb(err)
+            item.deepPopulate('waitingList.current.user', function (err) {
+              if (err) return cb(err)
+              expect(user.equals(item.waitingList.current[0].user))
+              cb()
+            })
+          })
+        })
+      })
+    })
+
+
     describe('Bug #23 (Mongoose 4.1 and up only)', function () {
       var MPromise = mongoose.Promise
 
